@@ -48,6 +48,8 @@ Choose the font family, style and size, check the preview image and if you like 
 
 **_NOTICE: The function for SH1106 with I2C interface is untested until now. Feedback appreciated._**
   ==> Done corrected
+  
+![Demo here](https://youtu.be/CymSD374Vxo)
 
 ```C++
 // For I2C display: create the display object connected to pin SDA and SDC
