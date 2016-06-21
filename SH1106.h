@@ -33,6 +33,9 @@ Credits for parts of this code go to Daniel Eichhorn and Mike Rankin. Thank you 
 #include <SPI.h>
 #include "SH1106Fonts.h"
 
+#define LCD_WIDTH 128
+#define LCD_HEIGHT 64
+
 #define BLACK 0
 #define WHITE 1
 #define INVERSE 2
@@ -47,31 +50,55 @@ Credits for parts of this code go to Daniel Eichhorn and Mike Rankin. Thank you 
 #define TEXT_ALIGN_CENTER 1
 #define TEXT_ALIGN_RIGHT 2
 
+
+// Command code
+#define SETSTARTLINE          0x40
+
+#define SETCONTRAST           0x81
+// + Contrast Data 8bit PoR = 0x80
+
+#define SETSEGREMAP_R2L       0xA1   // Default PoR
+#define SETSEGREMAP_L2R       0xA0
+#define SETSEGMENTREMAP       0xA1   // Old
+
+
+// Set Entire display (Normal 0xA4 or Entire 0xA5)
+#define DISPLAYALLON_RESUME   0xA4  // Default PoR
+#define DISPLAYALLON          0xA5
+
+#define NORMALDISPLAY         0xA6  // Default PoR
+#define INVERTDISPLAY         0xA7
+
+
+#define DISPLAYOFF            0xAE // Default PoR
+#define DISPLAYON             0xAF
+
+#define PAGESTARTADDRESS      0xB0
+#define SETHIGHCOLUMN         0x10
+#define SETLOWCOLUMN          0x00
+
+#define COMSCANINC            0xC8
+#define COMSCANDEC            0xC0 // Default PoR
+
 #define CHARGEPUMP 0x8D
 #define COLUMNADDR 0x21
-#define COMSCANDEC 0xC8
-#define COMSCANINC 0xC0
-#define DISPLAYALLON 0xA5
-#define DISPLAYALLON_RESUME 0xA4
-#define DISPLAYOFF 0xAE
-#define DISPLAYON 0xAF
+
 #define EXTERNALVCC 0x1
-#define INVERTDISPLAY 0xA7
+
 #define MEMORYMODE 0x20
-#define NORMALDISPLAY 0xA6
+
 #define PAGEADDR 0x22
 #define PAGESTARTADDRESS 0xB0
 #define SEGREMAP 0xA1
 #define SETCOMPINS 0xDA
-#define SETCONTRAST 0x81
+
 #define SETDISPLAYCLOCKDIV 0xD5
 #define SETDISPLAYOFFSET 0xD3
-#define SETHIGHCOLUMN 0x10
-#define SETLOWCOLUMN 0x00
+
 #define SETMULTIPLEX 0xA8
 #define SETPRECHARGE 0xD9
-#define SETSEGMENTREMAP 0xA1
-#define SETSTARTLINE 0x40
+
+
 #define SETVCOMDETECT 0xDB
 #define SWITCHCAPVCC 0x2
 
@@ -86,21 +113,25 @@ private:
 
    // SPI
    int  myDC, myRST, myCS;
-   
-   uint8_t buffer[128 * 64 / 8];
+
+
    int myTextAlignment = TEXT_ALIGN_LEFT;
    int myColor = WHITE;
    byte lastChar;
    const char *myFontData = ArialMT_Plain_10;
 
 public:
+
+  // Direct access to the buffer - Yeah !
+   uint8_t buffer[LCD_WIDTH * LCD_HEIGHT / 8];
+
    // For I2C display: create the display object connected to pin SDA and SDC
    SH1106(int i2cAddress, int sda, int sdc);
 
    // For SPI display: create the display object connected to SPI pins and RST, DC and CS
    // Also CLK and MOSI have to be connected to the correct pins (CLK = GPIO14, MOSI = GPIO13)
    SH1106(bool HW_SPI, int rst, int dc, int cs );
-   
+
    // Initialize the display
    void init();
 

@@ -35,7 +35,7 @@ SH1106::SH1106(int i2cAddress, int sda, int sdc) {
   I2C_io = true;
 }
 
-// constructor for hardware SPI - we indicate Reset, DataCommand and ChipSelect 
+// constructor for hardware SPI - we indicate Reset, DataCommand and ChipSelect
 // (HW_SPI used to differentiate constructor - reserved for future use)
 SH1106::SH1106(bool HW_SPI, int rst, int dc, int cs ) {
   myRST = rst;
@@ -115,22 +115,40 @@ void SH1106::display(void) {
     sendCommand(0x0);
     sendCommand(0x7);
 
+
     sendCommand(SETSTARTLINE | 0x00);
-	  
+
   if (I2C_io) {
-    for (uint16_t i=0; i<(128*64/8); i++) {
-      // send a bunch of data in one xmission
+
+
+    for (uint8_t page = 0; page < (LCD_HEIGHT / 8); page++) {
+
+      //set page address
       Wire.beginTransmission(myI2cAddress);
-      Wire.write(0x40);
-      for (uint8_t x=0; x<16; x++) {
-        Wire.write(buffer[i]);
-        i++;
-      }
-      i--;
-      yield();
+        Wire.write(0x80);                             //command mode
+        Wire.write(PAGESTARTADDRESS + page);
       Wire.endTransmission();
+
+      // set the 2nd colonne adresse
+      Wire.beginTransmission(myI2cAddress);
+        Wire.write(0x80);                             //command mode
+        Wire.write(2&0x0f);                           //set low col address
+        Wire.write(0x80);
+        Wire.write(SETHIGHCOLUMN + ( (2>>4) & 0x0f));
+      Wire.endTransmission();
+
+      for (uint8_t col = 2; col < 130; col++) {
+
+          Wire.beginTransmission(myI2cAddress);
+              Wire.write(0x40);   // Data Mode
+              Wire.write(buffer[127-(col-2) + page*128]);
+          Wire.endTransmission();
+
+      }
+
     }
-  }	else 
+
+  }	else
   {
     for (uint8_t page = 0; page < 64/8; page++) {
 	    for (uint8_t col = 2; col < 130; col++) {
@@ -140,20 +158,20 @@ void SH1106::display(void) {
   	    digitalWrite(myCS, HIGH);
         digitalWrite(myDC, HIGH);   // data mode
         digitalWrite(myCS, LOW);
-	      SPI.transfer(buffer[col-2 + page*128]);
+	      SPI.transfer(buffer[col-2 + page * LCD_WIDTH]);
 	    }
     }
-	  digitalWrite(myCS, HIGH);	
+	  digitalWrite(myCS, HIGH);
   }
 }
 
 void SH1106::setPixel(int x, int y) {
-  if (x >= 0 && x < 128 && y >= 0 && y < 64) {
+  if (x >= 0 && x < LCD_WIDTH && y >= 0 && y < LCD_HEIGHT) {
 
      switch (myColor) {
-      case WHITE:   buffer[x + (y/8)*128] |=  (1 << (y&7)); break;
-      case BLACK:   buffer[x + (y/8)*128] &= ~(1 << (y&7)); break;
-      case INVERSE: buffer[x + (y/8)*128] ^=  (1 << (y&7)); break;
+      case WHITE:   buffer[x + (y/8)*LCD_WIDTH] |=  (1 << (y&7)); break;
+      case BLACK:   buffer[x + (y/8)*LCD_WIDTH] &= ~(1 << (y&7)); break;
+      case INVERSE: buffer[x + (y/8)*LCD_WIDTH] ^=  (1 << (y&7)); break;
     }
   }
 }
@@ -310,11 +328,19 @@ void SH1106::setFont(const char *fontData) {
   myFontData = fontData;
 }
 
+/******************************************************************************
+** Image should be coded from  Left to right  then upper to botton           **
+** 0x01 => #... .... ; 0x03 => ##.. .... (# = active pixtel)                 **
+** and sould be inverted ? FF = black, 00 = White                            **
+******************************************************************************/
 void SH1106::drawBitmap(int x, int y, int width, int height, const char *bitmap) {
   for (int i = 0; i < width * height / 8; i++ ){
     unsigned char charColumn = 255 - pgm_read_byte(bitmap + i);
+
+    /* int targetX = i % width + x; */
+    int targetX = i % (width/8) + x;
+
     for (int j = 0; j < 8; j++) {
-      int targetX = i % width + x;
       int targetY = (i / (width)) * 8 + j + y;
       if (bitRead(charColumn, j)) {
         setPixel(targetX, targetY);
@@ -346,6 +372,9 @@ void SH1106::fillRect(int x, int y, int width, int height) {
   }
 }
 
+/****************************************************************************
+** Function call when sending a bitmap.                                    **
+****************************************************************************/
 void SH1106::drawXbm(int x, int y, int width, int height, const char *xbm) {
   if (width % 8 != 0) {
     width =  ((width / 8) + 1) * 8;
@@ -355,7 +384,8 @@ void SH1106::drawXbm(int x, int y, int width, int height, const char *xbm) {
     for (int j = 0; j < 8; j++) {
       int targetX = (i * 8 + j) % width + x;
       int targetY = (8 * i / (width)) + y;
-      if (bitRead(charColumn, j)) {
+      // Add a reversion of the bit order...work better with std tools
+      if (bitRead(charColumn, 7-j)) {
         setPixel(targetX, targetY);
       }
     }
@@ -378,8 +408,10 @@ void SH1106::sendCommand(unsigned char com) {
 }
 
 void SH1106::sendInitCommands(void) {
+
   sendCommand(DISPLAYOFF);
   sendCommand(NORMALDISPLAY);
+  sendCommand(DISPLAYOFF); /// Add from YDE
   sendCommand(SETDISPLAYCLOCKDIV);
   sendCommand(0x80);
   sendCommand(SETMULTIPLEX);
@@ -389,20 +421,30 @@ void SH1106::sendInitCommands(void) {
   sendCommand(SETSTARTLINE | 0x00);
   sendCommand(CHARGEPUMP);
   sendCommand(0x14);
-  sendCommand(MEMORYMODE);
-  sendCommand(0x00);
-  sendCommand(SEGREMAP);
+  sendCommand(MEMORYMODE);  //?
+  sendCommand(0x00);       // ?
+
+
+  sendCommand(SETSEGREMAP_R2L);
   sendCommand(COMSCANDEC);
+
   sendCommand(SETCOMPINS);
   sendCommand(0x12);
+
   sendCommand(SETCONTRAST);
   sendCommand(0xCF);
+
   sendCommand(SETPRECHARGE);
   sendCommand(0xF1);
+
   sendCommand(SETVCOMDETECT);
   sendCommand(0x40);
+
   sendCommand(DISPLAYALLON_RESUME);
   sendCommand(NORMALDISPLAY);
+
+// Suplémnantaire
   sendCommand(0x2e);            // stop scroll
+
   sendCommand(DISPLAYON);
 }
