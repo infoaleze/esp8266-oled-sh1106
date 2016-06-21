@@ -1,13 +1,15 @@
 # esp8266-oled-sh1106
 
 This is a driver for the SH1106 based 128x64 pixel OLED display running on the Arduino/ESP8266 platform.
-It has been tested with the SPI version of the display. Feedback for the I2C version is appreciated.
+It has been tested with the SPI version of the display. Now it has also been tested with the I2C interface.
 
 The SH1106 is in general similar to the SSD1306. Main difference is a memory of 132x64 instead of 128x64. The main thing which differs from the SSD1306 library is the implementation of the _display_ function.
 
 You can either download this library as a zip file and unpack it to your Arduino/libraries folder or (once it has been added) choose it from the Arduino library manager.
 
 ## Credits
+Many thanks to Rene (@rene-mt) for all the rest of the code...
+
 Many thanks go to Daniel Eichhorn (@squix78) and Fabrice Weinberg (@FWeinb) for providing the SSD1306 OLED and UI libraries for the ESP8266.
 
 The init sequence for the SH1106 was inspired by Adafruits library for the same display.
@@ -45,6 +47,8 @@ Choose the font family, style and size, check the preview image and if you like 
 ### Display Control
 
 **_NOTICE: The function for SH1106 with I2C interface is untested until now. Feedback appreciated._**
+  ==> Done corrected
+
 ```C++
 // For I2C display: create the display object connected to pin SDA and SDC
 SH1106(int i2cAddress, int sda, int sdc);
